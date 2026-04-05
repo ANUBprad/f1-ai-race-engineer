@@ -134,7 +134,6 @@ class FeatureEngineer:
 if __name__ == "__main__":
     fe = FeatureEngineer()
 
-    # 🔥 Debug mode (fast run)
     years = [2022]
 
     races = [
@@ -148,7 +147,14 @@ if __name__ == "__main__":
     dataset = fe.build_dataset(years, races)
 
     if not dataset.empty:
+        dataset["weather"] = dataset["weather"].map({"dry": 0, "wet": 1})
+        dataset = dataset.drop(columns=["position_gain"])
+
         dataset.to_csv("data/training_data.csv", index=False)
         print("\n✅ Feature upgraded dataset created:", dataset.shape)
-    else:
-        print("\n❌ Dataset creation failed")
+
+    print("\n🔍 Dataset Info:")
+    print(dataset.info())
+
+    print("\n📊 Missing values:")
+    print(dataset.isnull().sum())
