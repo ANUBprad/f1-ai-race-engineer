@@ -2,6 +2,7 @@ import fastf1
 import pandas as pd
 from typing import Dict, Any
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,6 +32,24 @@ class F1DataLoader:
         except Exception as e:
             logging.error(f"Failed to load session: {e}")
             raise
+    
+    def load_session_safe(self, year, gp_name, session_type="R"):
+        """
+        Safe loader with retry + rate limit handling
+        """
+        for attempt in range(3):
+            try:
+                return self.load_session(year, gp_name, session_type)
+
+            except Exception as e:
+                if "500 calls/h" in str(e):
+                    print("⚠️ Rate limit hit. Waiting 60 seconds...")
+                    time.sleep(60)
+                else:
+                    print(f"❌ Error: {e}")
+                    break
+
+        return None
 
     def get_race_data(self, session) -> Dict[str, Any]:
         """
