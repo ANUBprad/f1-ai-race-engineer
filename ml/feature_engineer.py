@@ -79,8 +79,6 @@ class FeatureEngineer:
                     "quali_position": quali_pos,
                     "avg_lap_time": avg_time,
                     "weather": weather_condition,
-
-                    # 🔥 ADVANCED FEATURES
                     "driver_consistency": lap_std.get(driver, np.nan),
                     "pace_delta": avg_time - fastest_lap if pd.notna(avg_time) else np.nan,
                     "grid_advantage": driver_row['GridPosition'] - quali_pos if pd.notna(quali_pos) else np.nan,
@@ -134,7 +132,7 @@ class FeatureEngineer:
 if __name__ == "__main__":
     fe = FeatureEngineer()
 
-    years = [2022]
+    years = [2021, 2022, 2023]
 
     races = [
         "Bahrain", "Saudi Arabia", "Australia", "Emilia Romagna",
@@ -148,7 +146,6 @@ if __name__ == "__main__":
 
     if not dataset.empty:
         dataset["weather"] = dataset["weather"].map({"dry": 0, "wet": 1})
-        dataset = dataset.drop(columns=["position_gain"])
 
         dataset.to_csv("data/training_data.csv", index=False)
         print("\n✅ Feature upgraded dataset created:", dataset.shape)
