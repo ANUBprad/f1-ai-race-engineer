@@ -133,3 +133,8 @@ shap.summary_plot(shap_values, X_test, show=False)
 plt.savefig("ml/models/shap_summary.png")
 
 print("\n📊 SHAP summary plot saved!")
+
+xgb.plot_importance(model)
+plt.savefig("ml/models/feature_importance.png")
+
+print("📊 Feature importance plot saved!")
