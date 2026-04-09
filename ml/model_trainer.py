@@ -10,17 +10,12 @@ from scipy.stats import spearmanr
 import xgboost as xgb
 import joblib
 
-
-# =========================
 # Load Dataset
-# =========================
 df = pd.read_csv("data/training_data.csv")
 print("✅ Dataset loaded:", df.shape)
 
-
-# =========================
-# Preprocessing
-# =========================
+#-------------------------------------
+# PREPROCESSING
 
 # Encode weather
 df["weather"] = df["weather"].map({"dry": 0, "wet": 1})
@@ -29,9 +24,8 @@ df["weather"] = df["weather"].map({"dry": 0, "wet": 1})
 df = df.sort_values(by=["driver", "year"])
 
 
-# =========================
-#  Historical Features 
-# =========================
+#-------------------------------------
+#  HISTORICAL PERFORMANCE FEATURES 
 
 # Driver historical performance
 df["driver_avg_finish"] = df.groupby("driver")["finish_position"].transform(lambda x: x.shift().expanding().mean())
@@ -47,10 +41,7 @@ df["quali_vs_team"] = df["quali_position"] - df["team_avg_finish"]
 df = df.dropna(subset=["driver_avg_finish", "team_avg_finish"])
 
 
-# =========================
 # Feature / Target Split
-# =========================
-
 X = df[[
     "quali_position",
     "weather",
@@ -61,14 +52,9 @@ X = df[[
     "quali_vs_team",
     "race_id"
 ]]
-
 y = df["position_gain"]
 
-
-# =========================
 # Train-Test Split (GROUPED)
-# =========================
-
 groups = df["race"]
 
 gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
@@ -82,11 +68,7 @@ for train_idx, test_idx in gss.split(X, y, groups):
 print("Train shape:", X_train.shape)
 print("Test shape:", X_test.shape)
 
-
-# =========================
 # Model (XGBoost)
-# =========================
-
 model = xgb.XGBRegressor(
     n_estimators=300,
     max_depth=6,
@@ -95,21 +77,13 @@ model = xgb.XGBRegressor(
     colsample_bytree=0.8,
     random_state=42
 )
-
 model.fit(X_train, y_train)
 
-
-# =========================
 # Predictions
-# =========================
-
 preds = model.predict(X_test)
 
 
-# =========================
 # Evaluation
-# =========================
-
 mae = mean_absolute_error(y_test, preds)
 spearman_corr = spearmanr(y_test, preds).correlation
 
@@ -118,10 +92,7 @@ print(f"MAE: {mae:.2f}")
 print(f"Spearman Rank Correlation: {spearman_corr:.2f}")
 
 
-# =========================
 # Save Model
-# =========================
-
 os.makedirs("ml/models", exist_ok=True)
 joblib.dump(model, "ml/models/race_predictor.pkl")
 print("\n✅ Model saved at ml/models/race_predictor.pkl")

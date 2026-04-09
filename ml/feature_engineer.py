@@ -1,8 +1,6 @@
 import sys
 import os
 import time
-
-# Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pandas as pd
@@ -10,7 +8,6 @@ import numpy as np
 from tqdm import tqdm
 
 from src.data.data_loader import F1DataLoader
-
 
 class FeatureEngineer:
     def __init__(self):
@@ -51,12 +48,11 @@ class FeatureEngineer:
             avg_lap_times = self.get_avg_lap_time(laps)
             weather_condition = self.get_weather_condition(weather)
 
-            # 🔥 NEW FEATURE CALCULATIONS
+            # NEW FEATURE CALCULATIONS
             lap_std = laps.groupby('Driver')['LapTime'].std().dt.total_seconds()
             fastest_lap = laps['LapTime'].min().total_seconds()
 
             rows = []
-
             for _, driver_row in results.iterrows():
                 driver = driver_row['Abbreviation']
 
@@ -64,6 +60,7 @@ class FeatureEngineer:
                     quali_pos = quali_session.results[
                         quali_session.results['Abbreviation'] == driver
                     ]['Position'].values[0]
+
                 except Exception:
                     quali_pos = np.nan
 
@@ -86,10 +83,9 @@ class FeatureEngineer:
                 }
 
                 rows.append(row)
-
             df = pd.DataFrame(rows)
 
-            # 🔥 DATA CLEANING
+            # DATA CLEANING
             df = df[df["grid_position"] > 0]
             df = df[df["finish_position"] > 0]
 
@@ -98,7 +94,6 @@ class FeatureEngineer:
                 "driver_consistency",
                 "pace_delta"
             ])
-
             return df
 
         except Exception as e:
@@ -114,7 +109,7 @@ class FeatureEngineer:
         for year in years:
             print(f"\nProcessing {year} season...")
             for race in tqdm(races):
-                time.sleep(0.3)  # prevent API rate limit
+                time.sleep(0.3)  
                 df = self.process_race(year, race)
 
                 if not df.empty:
@@ -125,15 +120,12 @@ class FeatureEngineer:
             return pd.DataFrame()
 
         final_df = pd.concat(all_data, ignore_index=True)
-
         return final_df
 
 
 if __name__ == "__main__":
     fe = FeatureEngineer()
-
     years = [2021, 2022, 2023]
-
     races = [
         "Bahrain", "Saudi Arabia", "Australia", "Emilia Romagna",
         "Miami", "Spain", "Monaco", "Azerbaijan", "Canada",

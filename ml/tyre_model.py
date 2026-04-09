@@ -1,14 +1,11 @@
 import sys
 import os
-
-# Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pandas as pd
 import numpy as np
 import xgboost as xgb
 import joblib
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 
@@ -22,9 +19,9 @@ class TyreDegradationModel:
         Prepare tyre degradation dataset
         """
 
-        # 🔥 CLEAN DATA
+        # CLEAN DATA
         laps = laps.dropna(subset=["LapTime", "Compound"])
-        laps = laps[laps["PitOutTime"].isna()]  # remove outlaps
+        laps = laps[laps["PitOutTime"].isna()]  
 
         # Convert lap time
         laps["lap_time_sec"] = laps["LapTime"].dt.total_seconds()
@@ -35,7 +32,7 @@ class TyreDegradationModel:
         # Tyre age
         laps["tyre_age"] = laps.groupby(["Driver", "Stint"]).cumcount()
 
-        # 🔥 FIXED BASELINE (FASTEST LAP IN STINT)
+        # FIXED BASELINE (FASTEST LAP IN STINT)
         laps["base_lap"] = laps.groupby(["Driver", "Stint"])["lap_time_sec"].transform("min")
 
         # Degradation
@@ -51,20 +48,17 @@ class TyreDegradationModel:
         }
         laps["compound_encoded"] = laps["Compound"].map(compound_map)
 
-        # 🔥 ADD CONTEXT FEATURES
+        # ADD CONTEXT FEATURES
         laps["lap_number"] = laps["LapNumber"]
 
-        # Some sessions may not have temp → safe fallback
         laps["track_temp"] = laps.get("TrackTemp", np.nan)
         laps["air_temp"] = laps.get("AirTemp", np.nan)
 
-        # Fill missing temps (safe)
         laps["track_temp"] = laps["track_temp"].fillna(laps["track_temp"].mean())
         laps["air_temp"] = laps["air_temp"].fillna(laps["air_temp"].mean())
 
         # Drop invalid
         laps = laps.dropna(subset=["compound_encoded", "lap_delta"])
-
         return laps
 
     def train(self, laps_df):
@@ -74,7 +68,7 @@ class TyreDegradationModel:
 
         df = self.prepare_data(laps_df)
 
-        # 🔥 FEATURES (UPGRADED)
+        # FEATURES 
         X = df[[
             "compound_encoded",
             "tyre_age",
@@ -84,10 +78,7 @@ class TyreDegradationModel:
         ]]
 
         y = df["lap_delta"]
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
         self.model = xgb.XGBRegressor(
             n_estimators=300,
@@ -145,7 +136,7 @@ if __name__ == "__main__":
     model = TyreDegradationModel()
     model.train(laps)
 
-    # 🔥 TEST PREDICTIONS
+    # TEST PREDICTIONS
     print("\nTest Predictions:")
     print("Soft, 5 laps:", model.predict("SOFT", 5))
     print("Medium, 15 laps:", model.predict("MEDIUM", 15))

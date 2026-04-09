@@ -1,7 +1,6 @@
 import sys
 import os
 
-# Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import joblib
@@ -85,7 +84,7 @@ class StrategyEngine:
         can_undercut = self.simulate_undercut(compound, tyre_age, gap_ahead)
         will_lose_position = pit_loss > gap_behind
 
-        # 🔥 FINAL DECISION LOGIC
+        # FINAL DECISION LOGIC
         if can_undercut and not will_lose_position:
             decision = "PIT NOW (UNDERCUT)"
         elif pit_loss < stay_loss and not will_lose_position:
@@ -95,11 +94,16 @@ class StrategyEngine:
         else:
             decision = "STAY OUT"
 
-        confidence = abs(stay_loss - pit_loss) / max(stay_loss, pit_loss)
-        return {
-            "decision": decision,
-            "confidence": round(confidence, 2)
-        }
+        confidence = abs(stay_loss - pit_loss) / (stay_loss + pit_loss)
+        if can_undercut:
+            confidence += 0.2
+        if will_lose_position:
+            confidence -= 0.3
+        confidence = max(0.5, confidence)   # minimum confidence
+        confidence = min(confidence, 0.9)   # cap max
+        confidence = float(confidence)
+
+        return {"decision": decision, "confidence": round(confidence, 2)}
 
 # MAIN EXECUTION 
 if __name__ == "__main__":
