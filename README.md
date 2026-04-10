@@ -1,190 +1,185 @@
-# 🏎️ F1 AI Race Engineer
+🏎️ F1 AI Race Engineer
 
-An AI-powered Formula 1 race strategy system that combines machine learning, simulation, and multi-agent reasoning to make dynamic race decisions.
-
----
-
-## 🚀 Project Overview
-
-This project simulates real-time Formula 1 race strategy decisions using:
-
-* Data-driven feature engineering
-* Machine learning models
-* Tyre degradation simulation
-* Multi-agent AI reasoning (LLM-based)
-
-The system evaluates race conditions lap-by-lap and outputs strategic decisions such as:
-
-* PIT NOW
-* PIT NOW (UNDERCUT)
-* STAY OUT
-* DELAY PIT
+An intelligent, end-to-end Formula 1 race strategy system that combines machine learning, simulation, and multi-agent AI to make real-time race decisions.
 
 ---
 
-## 🧠 System Architecture
+🚀 Project Overview
 
-```
-Race Simulation Loop
-        ↓
-Strategy Engine (ML + logic)
-        ↓
-Strategy Agent (LLM reasoning)
-        ↓
-Analyst Agent (Critic & validation)
-        ↓
-Final Decision Output
-```
+This system simulates how real F1 teams make strategic decisions during a race. It integrates:
+
+- Data ingestion from real F1 sessions
+- Machine learning for predictive modeling
+- Simulation-based decision logic
+- Multi-agent AI reasoning with self-correction
+
+The system operates in a loop, evaluating race conditions lap-by-lap and producing strategic decisions with explanations and confidence scores.
 
 ---
 
-## ⚙️ Features
+🧠 System Architecture
 
-### 🔹 Feature Engineering
-
-* Driver performance metrics
-* Pace delta calculation
-* Consistency tracking
-* Weather classification
-
-### 🔹 Machine Learning Model
-
-* XGBoost regression model
-* Predicts position gain
-* Evaluated using MAE & Spearman correlation
-
-### 🔹 Tyre Degradation Model
-
-* Predicts lap time loss
-* Considers compound, tyre age, and conditions
-
-### 🔹 Strategy Engine
-
-* Simulates pit vs stay decisions
-* Undercut modeling
-* Gap-based decision logic
-
-### 🔹 Multi-Agent AI System
-
-* **Strategy Agent** → Generates decision with reasoning
-* **Analyst Agent** → Critiques and refines decision
-
-### 🔹 Race Simulation
-
-* Lap-by-lap execution
-* Stateful decision-making
-* Dynamic strategy updates
-
-### 🔹 Fault Tolerance
-
-* Handles LLM JSON failures
-* Fallback to deterministic strategy
-* Schema-flexible outputs
+Telemetry/Data → Feature Engineering → ML Models
+                         ↓
+                Strategy Engine (Simulation)
+                         ↓
+          Strategy Agent (LLM Reasoning)
+                         ↓
+           Analyst Agent (Critique Layer)
+                         ↓
+                Final Decision Output
 
 ---
 
-## 📊 Example Output
+⚙️ Core Capabilities
 
-```
+- 📊 Predict race outcomes using ML
+- 🛞 Model tyre degradation dynamically
+- 🧠 Generate strategic decisions using AI agents
+- 🔁 Simulate races lap-by-lap
+- 🛡️ Handle uncertainty with fallback mechanisms
+- 📉 Provide explainable reasoning + confidence
+
+---
+
+🏗️ Project Phases
+
+---
+
+🔹 Phase 1: Data Pipeline & Feature Engineering
+
+- Built pipeline using FastF1
+- Extracted race, lap, and weather data
+- Engineered features like:
+  - Pace delta
+  - Driver consistency
+  - Grid advantage
+- Created structured dataset for ML training
+
+---
+
+🔹 Phase 2: Machine Learning Models
+
+- Trained XGBoost regression model
+- Target: Position gain
+- Evaluated using:
+  - Mean Absolute Error (MAE)
+  - Spearman Rank Correlation
+- Added SHAP for explainability
+
+---
+
+🔹 Phase 3: Tyre Degradation Modeling
+
+- Built regression model for lap time loss
+- Inputs:
+  - Tyre compound
+  - Tyre age
+  - Track conditions
+- Output:
+  - Predicted degradation curve
+
+---
+
+🔹 Phase 4: Strategy Engine (Simulation Core)
+
+- Simulates:
+  - Stay-out vs pit scenarios
+  - Undercut opportunities
+  - Gap-based decisions
+- Produces:
+  - Action + confidence score
+
+---
+
+🔹 Phase 5: Multi-Agent AI System
+
+- Strategy Agent
+  - Enhances decisions using LLM reasoning
+- Analyst Agent
+  - Critiques and refines decisions
+- Features:
+  - JSON-structured outputs
+  - Confidence calibration
+  - Fault-tolerant fallback system
+
+---
+
+🔹 Next Phase: LangGraph Orchestration 🚀
+
+- Convert pipeline into graph-based execution
+- Introduce:
+  - Stateful agents
+  - Conditional flows
+  - Multi-step reasoning loops
+
+---
+
+🔁 Race Simulation
+
+- Lap-by-lap simulation engine
+- Dynamic updates:
+  - Tyre age
+  - Gaps
+  - Strategy decisions
+- Produces evolving race strategy
+
+---
+
+📊 Example Output
+
 LAP 7
 Action: PIT NOW (UNDERCUT)
 Confidence: 0.65
 Reasoning: Undercut opportunity exists with sufficient gap behind and tyre degradation advantage.
-```
 
 ---
 
-## 🧩 Tech Stack
+🧩 Tech Stack
 
-* Python
-* Pandas / NumPy
-* XGBoost
-* LangChain
-* Ollama (Local LLM)
-* Matplotlib (optional)
+- Python
+- Pandas / NumPy
+- XGBoost
+- SHAP
+- LangChain
+- Ollama (Local LLM)
 
 ---
 
-## 📁 Project Structure
+📁 Project Structure
 
-```
 f1-ai-race-engineer/
 │
 ├── data/
 ├── ml/
-│   ├── feature_engineer.py
-│   ├── model_trainer.py
-│   ├── tyre_model.py
-│   └── strategy_engine.py
-│
 ├── agents/
-│   ├── strategy_agent.py
-│   └── analyst_agent.py
-│
 ├── simulation/
-│   └── race_simulation.py
-│
 ├── models/
 ├── README.md
 └── requirements.txt
-```
 
 ---
 
-## 🏁 Progress Timeline
+🧠 Key Highlights
 
-### ✅ Day 1–2
-
-* Data pipeline + Feature engineering
-
-### ✅ Day 3
-
-* ML model training + evaluation + SHAP
-
-### ✅ Day 4
-
-* Tyre degradation model + strategy engine
-
-### ✅ Day 5
-
-* Multi-agent system (Strategy + Analyst)
-* Race simulation loop
-* Fault-tolerant AI pipeline
-
-### 🚀 Day 6 (Next)
-
-* LangGraph orchestration
-* Agent workflow graph
-* State management system
+- Multi-agent AI architecture
+- Hybrid ML + LLM system
+- Simulation-driven decision making
+- Explainable AI with SHAP
+- Production-style fault tolerance
 
 ---
 
-## 🧠 Key Highlights
+🎯 Future Enhancements
 
-* Multi-agent AI architecture
-* Real-time decision simulation
-* Context-aware reasoning
-* Hybrid ML + LLM system
-* Production-style fault handling
-
----
-
-## 🎯 Future Improvements
-
-* LangGraph integration
-* Streamlit dashboard (UI)
-* Safety car & weather modeling
-* Full race simulation (multi-driver)
+- LangGraph-based orchestration
+- Streamlit dashboard
+- Safety car & weather simulation
+- Full multi-driver race simulation
 
 ---
 
-## 💡 Inspiration
-
-Inspired by real Formula 1 race strategy systems used by teams to optimize pit stops and race outcomes.
-
----
-
-## 🏆 Author
+👨‍💻 Author
 
 Anubhab Pradhan
 BE Artificial Intelligence & Data Science
@@ -192,6 +187,6 @@ CMR Institute of Technology
 
 ---
 
-## ⭐ If you like this project
+⭐ Support
 
-Give it a star ⭐ on GitHub!
+If you find this project interesting, consider giving it a star ⭐
