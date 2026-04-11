@@ -251,13 +251,3 @@ Then re-run to see how the strategy adapts.
 ## 👨‍💻 Author
 
 **Anubhab Pradhan**  
-BE Artificial Intelligence & Data Science  
-CMR Institute of Technology
-
-[![GitHub](https://img.shields.io/badge/GitHub-ANUBprad-black?style=flat-square&logo=github)](https://github.com/ANUBprad)
-
----
-
-## ⭐ Support
-
-If you found this project useful or interesting, consider giving it a ⭐ — it helps others find it too!
