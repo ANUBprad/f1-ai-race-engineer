@@ -28,18 +28,12 @@ chat_history = []
 
 
 # =========================
-# PROMPT
+# PROMPT (MULTI-MODE)
 # =========================
 prompt = ChatPromptTemplate.from_template("""
 You are an elite Formula 1 AI Analyst 🏎️.
 
-Behavior:
-- Always keep responses engaging, energetic, and insightful
-- If the question is NOT about F1:
-  → briefly acknowledge it
-  → creatively relate it back to Formula 1
-  → maintain a racing tone
-- Never reject the user
+Mode: {mode}
 
 Chat History:
 {history}
@@ -47,15 +41,32 @@ Chat History:
 User Question:
 {question}
 
-Instructions:
-- Think like a race engineer
-- Use clear structure
-- Be concise but insightful
+Behavior Rules:
 
-Structure:
-- Explanation
-- Key Insight
-- Example (if applicable)
+If Mode = KNOWLEDGE:
+- Provide structured explanation
+- Be detailed and insightful
+- Use:
+  Explanation
+  Key Insight
+  Example
+
+If Mode = STRATEGY:
+- Be concise and action-focused
+- Think like a race engineer
+- Focus on decision-making
+
+If Mode = HYBRID:
+- First explain the concept clearly
+- Then connect it to a real race scenario
+- Keep it engaging and insightful
+
+General:
+- Keep responses energetic and engaging
+- If question is not directly F1-related:
+  → briefly acknowledge it
+  → relate it back to F1
+- Maintain racing tone
 
 Answer:
 """)
@@ -64,11 +75,33 @@ chain = prompt | llm
 
 
 # =========================
-# DETECT STRATEGY QUERY
+# INTENT DETECTION (LLM)
 # =========================
-def is_strategy_query(question):
-    keywords = ["tyre", "pit", "gap", "strategy", "lap", "undercut", "overcut"]
-    return any(word in question.lower() for word in keywords)
+def detect_intent(question):
+
+    intent_prompt = f"""
+Classify the user query into ONE of these categories:
+
+1. STRATEGY → asking what decision to take (pit, tyres, gaps, etc.)
+2. KNOWLEDGE → asking for explanation or info about F1
+3. HYBRID → asking for explanation + decision/example
+
+Return ONLY one word: STRATEGY or KNOWLEDGE or HYBRID
+
+Query:
+{question}
+"""
+
+    response = llm.invoke(intent_prompt)
+
+    intent = response.content.strip().upper()
+
+    if "STRATEGY" in intent:
+        return "STRATEGY"
+    elif "HYBRID" in intent:
+        return "HYBRID"
+    else:
+        return "KNOWLEDGE"
 
 
 # =========================
@@ -91,8 +124,13 @@ def ask_f1(question):
 
     global chat_history
 
-    # 🔥 STRATEGY MODE (CALL YOUR SYSTEM)
-    if is_strategy_query(question):
+    intent = detect_intent(question)
+    history_text = "\n".join(chat_history[-4:])
+
+    # =========================
+    # STRATEGY MODE
+    # =========================
+    if intent == "STRATEGY":
 
         values = extract_values(question)
 
@@ -107,39 +145,56 @@ def ask_f1(question):
         result = run_strategy(input_data)
 
         return f"""
-🏁 Strategy Recommendation:
+            🏁 Strategy Recommendation:
+            Action: {result['action']}
+            Confidence: {result['confidence']}
+            Reasoning:
+            {result['reasoning']}
+            """
 
-Action: {result['action']}
-Confidence: {result['confidence']}
+    # HYBRID MODE
+    elif intent == "HYBRID":
+        explanation = chain.invoke({
+            "question": question,
+            "history": history_text,
+            "mode": "HYBRID"
+        }).content
+        values = extract_values(question)
 
-Reasoning:
-{result['reasoning']}
-"""
+        input_data = {
+            "compound": "MEDIUM",
+            "tyre_age": values["tyre_age"],
+            "circuit": "Bahrain",
+            "gap_ahead": values["gap_ahead"],
+            "gap_behind": values["gap_behind"]
+        }
+        result = run_strategy(input_data)
 
-    # 🔥 NORMAL / REDIRECT FLOW
-    history_text = "\n".join(chat_history[-4:])
+        return f"""
+            {explanation}
+            🏁 Example Strategy Scenario:
+            Action: {result['action']}
+            Confidence: {result['confidence']}
+            """
 
-    response = chain.invoke({
-        "question": question,
-        "history": history_text
-    })
+    # KNOWLEDGE MODE
+    else:
+        response = chain.invoke({
+            "question": question,
+            "history": history_text,
+            "mode": "KNOWLEDGE"
+        })
+        answer = response.content
 
-    answer = response.content
+        chat_history.append(f"User: {question}")
+        chat_history.append(f"Bot: {answer}")
 
-    # Store memory
-    chat_history.append(f"User: {question}")
-    chat_history.append(f"Bot: {answer}")
-
-    return answer
+        return answer
 
 
-# =========================
 # CLI LOOP
-# =========================
 if __name__ == "__main__":
-
-    print("\n🏎️ F1 AI Analyst (Enhanced Mode) — type 'exit' to quit\n")
-
+    print("\n🏎️ F1 AI Analyst (Multi-Mode) — type 'exit' to quit\n")
     while True:
         user_input = input("You: ")
 
