@@ -22,51 +22,52 @@ llm = ChatOllama(
 
 
 # =========================
-# MEMORY
+# MEMORY STATE
 # =========================
-chat_history = []
+memory = {
+    "history": [],
+    "topic": None
+}
 
 
 # =========================
-# PROMPT (MULTI-MODE)
+# PROMPT (MULTI-MODE + CONTEXT)
 # =========================
 prompt = ChatPromptTemplate.from_template("""
 You are an elite Formula 1 AI Analyst 🏎️.
 
 Mode: {mode}
+Current Topic: {topic}
 
-Chat History:
+Conversation Context:
 {history}
 
 User Question:
 {question}
 
+Instructions:
+- Maintain continuity with previous conversation
+- Avoid repeating explanations unnecessarily
+- Build on previous responses
+
 Behavior Rules:
 
 If Mode = KNOWLEDGE:
 - Provide structured explanation
-- Be detailed and insightful
 - Use:
   Explanation
   Key Insight
   Example
 
 If Mode = STRATEGY:
-- Be concise and action-focused
-- Think like a race engineer
-- Focus on decision-making
+- Be concise and decision-focused
 
 If Mode = HYBRID:
-- First explain the concept clearly
-- Then connect it to a real race scenario
-- Keep it engaging and insightful
+- Explain + connect to real scenario
 
 General:
-- Keep responses energetic and engaging
-- If question is not directly F1-related:
-  → briefly acknowledge it
-  → relate it back to F1
-- Maintain racing tone
+- Keep responses engaging and energetic
+- If not directly F1-related → relate it back to F1
 
 Answer:
 """)
@@ -75,25 +76,24 @@ chain = prompt | llm
 
 
 # =========================
-# INTENT DETECTION (LLM)
+# INTENT DETECTION
 # =========================
 def detect_intent(question):
 
     intent_prompt = f"""
 Classify the user query into ONE of these categories:
 
-1. STRATEGY → asking what decision to take (pit, tyres, gaps, etc.)
-2. KNOWLEDGE → asking for explanation or info about F1
-3. HYBRID → asking for explanation + decision/example
+1. STRATEGY
+2. KNOWLEDGE
+3. HYBRID
 
-Return ONLY one word: STRATEGY or KNOWLEDGE or HYBRID
+Return ONLY one word.
 
 Query:
 {question}
 """
 
     response = llm.invoke(intent_prompt)
-
     intent = response.content.strip().upper()
 
     if "STRATEGY" in intent:
@@ -105,7 +105,51 @@ Query:
 
 
 # =========================
-# EXTRACT NUMBERS
+# TOPIC DETECTION
+# =========================
+def detect_topic(question):
+
+    q = question.lower()
+
+    if "undercut" in q or "overcut" in q:
+        return "strategy_concept"
+    elif "tyre" in q or "degradation" in q:
+        return "tyre"
+    elif "driver" in q or "team" in q:
+        return "f1_entities"
+    else:
+        return "general"
+
+
+# =========================
+# MEMORY FUNCTIONS
+# =========================
+def update_memory(question, answer):
+
+    topic = detect_topic(question)
+    memory["topic"] = topic
+
+    memory["history"].append({
+        "user": question,
+        "bot": answer
+    })
+
+    memory["history"] = memory["history"][-5:]
+
+
+def build_context():
+
+    history_text = ""
+
+    for chat in memory["history"]:
+        history_text += f"User: {chat['user']}\n"
+        history_text += f"Bot: {chat['bot']}\n"
+
+    return history_text
+
+
+# =========================
+# EXTRACT VALUES
 # =========================
 def extract_values(question):
     numbers = list(map(int, re.findall(r'\d+', question)))
@@ -118,14 +162,59 @@ def extract_values(question):
 
 
 # =========================
-# MAIN CHAT FUNCTION
+# SCENARIO BUILDER (UPG 3)
+# =========================
+def build_scenario(question):
+
+    q = question.lower()
+
+    scenario = {
+        "compound": "MEDIUM",
+        "tyre_age": 10,
+        "gap_ahead": 5,
+        "gap_behind": 20,
+        "circuit": "Bahrain"
+    }
+
+    if "undercut" in q:
+        scenario["tyre_age"] = 12
+        scenario["gap_ahead"] = 4
+    elif "overcut" in q:
+        scenario["tyre_age"] = 6
+        scenario["gap_ahead"] = 2
+    elif "degradation" in q:
+        scenario["tyre_age"] = 15
+
+    return scenario
+
+
+# =========================
+# STRATEGY EXPLAINER
+# =========================
+def explain_strategy(result):
+
+    explanation_prompt = f"""
+You are a Formula 1 race engineer.
+
+Explain why this strategy works:
+
+Decision: {result['action']}
+Confidence: {result['confidence']}
+Reasoning: {result['reasoning']}
+"""
+
+    response = llm.invoke(explanation_prompt)
+    return response.content
+
+
+# =========================
+# MAIN FUNCTION
 # =========================
 def ask_f1(question):
 
-    global chat_history
-
     intent = detect_intent(question)
-    history_text = "\n".join(chat_history[-4:])
+    history_text = build_context()
+    topic = detect_topic(question)
 
     # =========================
     # STRATEGY MODE
@@ -144,57 +233,76 @@ def ask_f1(question):
 
         result = run_strategy(input_data)
 
-        return f"""
-            🏁 Strategy Recommendation:
-            Action: {result['action']}
-            Confidence: {result['confidence']}
-            Reasoning:
-            {result['reasoning']}
-            """
+        answer = f"""
+🏁 Strategy Recommendation:
 
+Action: {result['action']}
+Confidence: {result['confidence']}
+
+Reasoning:
+{result['reasoning']}
+"""
+
+        update_memory(question, answer)
+        return answer
+
+    # =========================
     # HYBRID MODE
+    # =========================
     elif intent == "HYBRID":
+
         explanation = chain.invoke({
             "question": question,
             "history": history_text,
-            "mode": "HYBRID"
+            "mode": "HYBRID",
+            "topic": topic
         }).content
-        values = extract_values(question)
 
-        input_data = {
-            "compound": "MEDIUM",
-            "tyre_age": values["tyre_age"],
-            "circuit": "Bahrain",
-            "gap_ahead": values["gap_ahead"],
-            "gap_behind": values["gap_behind"]
-        }
-        result = run_strategy(input_data)
+        scenario = build_scenario(question)
+        result = run_strategy(scenario)
 
-        return f"""
-            {explanation}
-            🏁 Example Strategy Scenario:
-            Action: {result['action']}
-            Confidence: {result['confidence']}
-            """
+        strategy_explanation = explain_strategy(result)
 
+        answer = f"""
+{explanation}
+
+🏁 Real Race Scenario Simulation:
+
+Action: {result['action']}
+Confidence: {result['confidence']}
+
+🔧 Why this works:
+{strategy_explanation}
+"""
+
+        update_memory(question, answer)
+        return answer
+
+    # =========================
     # KNOWLEDGE MODE
+    # =========================
     else:
+
         response = chain.invoke({
             "question": question,
             "history": history_text,
-            "mode": "KNOWLEDGE"
+            "mode": "KNOWLEDGE",
+            "topic": topic
         })
+
         answer = response.content
 
-        chat_history.append(f"User: {question}")
-        chat_history.append(f"Bot: {answer}")
-
+        update_memory(question, answer)
         return answer
 
 
+# =========================
 # CLI LOOP
+# =========================
 if __name__ == "__main__":
-    print("\n🏎️ F1 AI Analyst (Multi-Mode) — type 'exit' to quit\n")
+
+    print("\n🏎️ F1 AI Analyst (Advanced Mode) — type 'exit' to quit\n")
+
     while True:
         user_input = input("You: ")
 
