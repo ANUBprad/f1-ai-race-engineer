@@ -8,42 +8,22 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
-
 from agents.strategy_agent import run_strategy
 
-
-# =========================
 # LLM
-# =========================
-llm = ChatOllama(
-    model="mistral",
-    temperature=0.3
-)
+llm = ChatOllama(model="mistral", temperature=0.3)
 
-
-# =========================
 # MEMORY STATE
-# =========================
-memory = {
-    "history": [],
-    "topic": None
-}
+memory = {"history": [], "topic": None}
 
-
-# =========================
 # PROMPT (MULTI-MODE + CONTEXT)
-# =========================
 prompt = ChatPromptTemplate.from_template("""
-You are an elite Formula 1 AI Analyst 🏎️.
+You are an elite Formula 1 AI Analyst.
 
 Mode: {mode}
 Current Topic: {topic}
-
-Conversation Context:
-{history}
-
-User Question:
-{question}
+Conversation Context: {history}
+User Question: {question}
 
 Instructions:
 - Maintain continuity with previous conversation
@@ -71,27 +51,21 @@ General:
 
 Answer:
 """)
-
 chain = prompt | llm
 
 
-# =========================
 # INTENT DETECTION
-# =========================
 def detect_intent(question):
 
     intent_prompt = f"""
-Classify the user query into ONE of these categories:
+        Classify the user query into ONE of these categories:
+        1. STRATEGY
+        2. KNOWLEDGE
+        3. HYBRID
 
-1. STRATEGY
-2. KNOWLEDGE
-3. HYBRID
-
-Return ONLY one word.
-
-Query:
-{question}
-"""
+        Return ONLY one word.
+        Query: {question}
+    """
 
     response = llm.invoke(intent_prompt)
     intent = response.content.strip().upper()
@@ -104,9 +78,7 @@ Query:
         return "KNOWLEDGE"
 
 
-# =========================
 # TOPIC DETECTION
-# =========================
 def detect_topic(question):
 
     q = question.lower()
@@ -121,24 +93,15 @@ def detect_topic(question):
         return "general"
 
 
-# =========================
 # MEMORY FUNCTIONS
-# =========================
 def update_memory(question, answer):
-
     topic = detect_topic(question)
     memory["topic"] = topic
-
-    memory["history"].append({
-        "user": question,
-        "bot": answer
-    })
-
+    memory["history"].append({"user": question, "bot": answer})
     memory["history"] = memory["history"][-5:]
 
 
 def build_context():
-
     history_text = ""
 
     for chat in memory["history"]:
@@ -148,9 +111,7 @@ def build_context():
     return history_text
 
 
-# =========================
 # EXTRACT VALUES
-# =========================
 def extract_values(question):
     numbers = list(map(int, re.findall(r'\d+', question)))
 
@@ -161,13 +122,10 @@ def extract_values(question):
     }
 
 
-# =========================
-# SCENARIO BUILDER (UPG 3)
-# =========================
+# SCENARIO BUILDER 
 def build_scenario(question):
 
     q = question.lower()
-
     scenario = {
         "compound": "MEDIUM",
         "tyre_age": 10,
@@ -188,39 +146,32 @@ def build_scenario(question):
     return scenario
 
 
-# =========================
 # STRATEGY EXPLAINER
-# =========================
 def explain_strategy(result):
 
     explanation_prompt = f"""
-You are a Formula 1 race engineer.
+        You are a Formula 1 race engineer.
 
-Explain why this strategy works:
+        Explain why this strategy works:
 
-Decision: {result['action']}
-Confidence: {result['confidence']}
-Reasoning: {result['reasoning']}
-"""
+        Decision: {result['action']}
+        Confidence: {result['confidence']}
+        Reasoning: {result['reasoning']}
+        """
 
     response = llm.invoke(explanation_prompt)
     return response.content
 
 
-# =========================
 # MAIN FUNCTION
-# =========================
 def ask_f1(question):
 
     intent = detect_intent(question)
     history_text = build_context()
     topic = detect_topic(question)
 
-    # =========================
     # STRATEGY MODE
-    # =========================
     if intent == "STRATEGY":
-
         values = extract_values(question)
 
         input_data = {
@@ -234,23 +185,19 @@ def ask_f1(question):
         result = run_strategy(input_data)
 
         answer = f"""
-🏁 Strategy Recommendation:
+            Strategy Recommendation:
 
-Action: {result['action']}
-Confidence: {result['confidence']}
+            Action: {result['action']}
+            Confidence: {result['confidence']}
 
-Reasoning:
-{result['reasoning']}
-"""
+            Reasoning: {result['reasoning']}
+            """
 
         update_memory(question, answer)
         return answer
 
-    # =========================
     # HYBRID MODE
-    # =========================
     elif intent == "HYBRID":
-
         explanation = chain.invoke({
             "question": question,
             "history": history_text,
@@ -260,29 +207,23 @@ Reasoning:
 
         scenario = build_scenario(question)
         result = run_strategy(scenario)
-
         strategy_explanation = explain_strategy(result)
 
         answer = f"""
-{explanation}
+            {explanation}
 
-🏁 Real Race Scenario Simulation:
+            🏁 Real Race Scenario Simulation:
 
-Action: {result['action']}
-Confidence: {result['confidence']}
-
-🔧 Why this works:
-{strategy_explanation}
-"""
+            Action: {result['action']}
+            Confidence: {result['confidence']}
+            🔧 Why this works: {strategy_explanation}
+            """
 
         update_memory(question, answer)
         return answer
 
-    # =========================
     # KNOWLEDGE MODE
-    # =========================
     else:
-
         response = chain.invoke({
             "question": question,
             "history": history_text,
@@ -291,26 +232,21 @@ Confidence: {result['confidence']}
         })
 
         answer = response.content
-
         update_memory(question, answer)
         return answer
 
 
-# =========================
 # CLI LOOP
-# =========================
 if __name__ == "__main__":
 
-    print("\n🏎️ F1 AI Analyst (Advanced Mode) — type 'exit' to quit\n")
-
+    print("\n F1 AI Analyst (Advanced Mode) — type 'exit' to quit\n")
     while True:
         user_input = input("You: ")
-
         if user_input.lower() == "exit":
             break
 
         answer = ask_f1(user_input)
 
-        print("\n🤖 Analyst:\n")
+        print("\n Analyst:\n")
         print(answer)
         print("\n" + "-" * 50 + "\n")
