@@ -65,7 +65,6 @@ class TyreDegradationModel:
         """
         Train tyre degradation model
         """
-
         df = self.prepare_data(laps_df)
 
         # FEATURES 
@@ -90,12 +89,9 @@ class TyreDegradationModel:
         )
 
         self.model.fit(X_train, y_train)
-
         preds = self.model.predict(X_test)
-
         mae = mean_absolute_error(y_test, preds)
-
-        print(f"\n📊 Tyre Model MAE: {mae:.2f} sec")
+        print(f"\n Tyre Model MAE: {mae:.2f} sec")
 
         return self.model
 
@@ -145,4 +141,4 @@ if __name__ == "__main__":
     os.makedirs("ml/models", exist_ok=True)
     joblib.dump(model.model, "ml/models/tyre_model.pkl")
 
-    print("\n✅ Tyre model saved!")
+    print("\n Tyre model saved!")

@@ -6,8 +6,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-
 from src.data.data_loader import F1DataLoader
+
 
 class FeatureEngineer:
     def __init__(self):
@@ -30,14 +30,14 @@ class FeatureEngineer:
 
     def process_race(self, year, gp_name):
         """
-        Process a single race into feature rows
+        # Process a single race into feature rows
         """
         try:
             race_session = self.loader.load_session_safe(year, gp_name, "R")
             quali_session = self.loader.load_session_safe(year, gp_name, "Q")
 
             if race_session is None or quali_session is None:
-                print(f"⚠️ Skipping invalid race: {year} {gp_name}")
+                print(f" Skipping invalid race: {year} {gp_name}")
                 return pd.DataFrame()
 
             race_data = self.loader.get_race_data(race_session)
@@ -97,7 +97,7 @@ class FeatureEngineer:
             return df
 
         except Exception as e:
-            print(f"❌ Error processing {year} {gp_name}: {e}")
+            print(f" Error processing {year} {gp_name}: {e}")
             return pd.DataFrame()
 
     def build_dataset(self, years, races):
@@ -116,7 +116,7 @@ class FeatureEngineer:
                     all_data.append(df)
 
         if len(all_data) == 0:
-            print("❌ No data collected!")
+            print(" No data collected!")
             return pd.DataFrame()
 
         final_df = pd.concat(all_data, ignore_index=True)
@@ -140,10 +140,10 @@ if __name__ == "__main__":
         dataset["weather"] = dataset["weather"].map({"dry": 0, "wet": 1})
 
         dataset.to_csv("data/training_data.csv", index=False)
-        print("\n✅ Feature upgraded dataset created:", dataset.shape)
+        print("\n Feature upgraded dataset created:", dataset.shape)
 
-    print("\n🔍 Dataset Info:")
+    print("\n Dataset Info:")
     print(dataset.info())
 
-    print("\n📊 Missing values:")
+    print("\nMissing values:")
     print(dataset.isnull().sum())

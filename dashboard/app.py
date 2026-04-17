@@ -15,7 +15,7 @@ loader = F1DataLoader()
 
 st.set_page_config(page_title="F1 AI Engineer", layout="wide")
 
-st.title("🏎️ F1 Telemetry Dashboard")
+st.title(" F1 Telemetry Dashboard")
 
 # Sidebar Inputs
 year = st.sidebar.selectbox("Year", [2021, 2022, 2023, 2024])

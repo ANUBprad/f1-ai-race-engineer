@@ -7,14 +7,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-
 from ml.strategy_engine import StrategyEngine
 from agents.analyst_agent import analyze_decision
 
 
 # Initialize Engine
 engine = StrategyEngine()
-
 
 # Strategy Tool
 def strategy_tool(input_data):
@@ -29,7 +27,6 @@ def strategy_tool(input_data):
 
 # LLM (Ollama)
 llm = ChatOllama(model="mistral", temperature=0)
-
 
 # Prompt
 prompt = ChatPromptTemplate.from_template("""
@@ -66,7 +63,6 @@ Return STRICT VALID JSON.
 }}
 """)
 
-
 # Chain
 parser = JsonOutputParser()
 chain = prompt | llm | parser
@@ -85,7 +81,7 @@ def run_strategy(input_data, history=None):
             "strategy_output": strategy_output
         })
     except Exception:
-        print("⚠️ Strategy Agent failed, using fallback...")
+        print(" Strategy Agent failed, using fallback...")
 
         ai_decision = chain.invoke({
             **input_data,
@@ -97,7 +93,7 @@ def run_strategy(input_data, history=None):
     try:
         final_decision = analyze_decision(input_data, ai_decision)
     except Exception:
-        print("⚠️ Analyst Agent failed, using AI decision...")
+        print(" Analyst Agent failed, using AI decision...")
 
         final_decision = {
             "final_action": ai_decision.get("action"),
@@ -111,7 +107,6 @@ def run_strategy(input_data, history=None):
         "confidence": float(final_decision.get("confidence", 0.6)),
         "reasoning": final_decision.get("analysis") or final_decision.get("reasoning")
     }
-
     return final_output
 
 #==================================
@@ -124,8 +119,6 @@ if __name__ == "__main__":
         "gap_ahead": 5,
         "gap_behind": 25
     }
-
     result = run_strategy(input_data)
-
-    print("\n🏁 FINAL DECISION:\n")
+    print("\n FINAL DECISION:\n")
     print(result)

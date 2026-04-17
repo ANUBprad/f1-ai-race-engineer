@@ -1,6 +1,5 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import joblib
@@ -117,5 +116,5 @@ if __name__ == "__main__":
         gap_behind=25
     )
 
-    print("\n🚦 Strategy Decision:", result["decision"])
+    print("\n Strategy Decision:", result["decision"])
     print("Confidence:", result["confidence"])

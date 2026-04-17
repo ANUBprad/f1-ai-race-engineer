@@ -12,9 +12,9 @@ import joblib
 
 # Load Dataset
 df = pd.read_csv("data/training_data.csv")
-print("✅ Dataset loaded:", df.shape)
+print(" Dataset loaded:", df.shape)
 
-#-------------------------------------
+#----------------------------------------------
 # PREPROCESSING
 
 # Encode weather
@@ -22,9 +22,9 @@ df["weather"] = df["weather"].map({"dry": 0, "wet": 1})
 
 # Sort for time-based features
 df = df.sort_values(by=["driver", "year"])
+#----------------------------------------------
 
-
-#-------------------------------------
+#----------------------------------------------
 #  HISTORICAL PERFORMANCE FEATURES 
 
 # Driver historical performance
@@ -39,7 +39,6 @@ df["quali_vs_team"] = df["quali_position"] - df["team_avg_finish"]
 
 # Drop rows where history not available
 df = df.dropna(subset=["driver_avg_finish", "team_avg_finish"])
-
 
 # Feature / Target Split
 X = df[[
@@ -56,7 +55,6 @@ y = df["position_gain"]
 
 # Train-Test Split (GROUPED)
 groups = df["race"]
-
 gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 
 for train_idx, test_idx in gss.split(X, y, groups):
@@ -82,12 +80,11 @@ model.fit(X_train, y_train)
 # Predictions
 preds = model.predict(X_test)
 
-
 # Evaluation
 mae = mean_absolute_error(y_test, preds)
 spearman_corr = spearmanr(y_test, preds).correlation
 
-print("\n📊 MODEL PERFORMANCE")
+print("\n MODEL PERFORMANCE")
 print(f"MAE: {mae:.2f}")
 print(f"Spearman Rank Correlation: {spearman_corr:.2f}")
 
@@ -95,7 +92,7 @@ print(f"Spearman Rank Correlation: {spearman_corr:.2f}")
 # Save Model
 os.makedirs("ml/models", exist_ok=True)
 joblib.dump(model, "ml/models/race_predictor.pkl")
-print("\n✅ Model saved at ml/models/race_predictor.pkl")
+print("\n Model saved at ml/models/race_predictor.pkl")
 
 explainer = shap.Explainer(model)
 shap_values = explainer(X_test)
@@ -103,9 +100,9 @@ shap_values = explainer(X_test)
 shap.summary_plot(shap_values, X_test, show=False)
 plt.savefig("ml/models/shap_summary.png")
 
-print("\n📊 SHAP summary plot saved!")
+print("\n SHAP summary plot saved!")
 
 xgb.plot_importance(model)
 plt.savefig("ml/models/feature_importance.png")
 
-print("📊 Feature importance plot saved!")
+print(" Feature importance plot saved!")

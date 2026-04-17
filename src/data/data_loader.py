@@ -43,10 +43,10 @@ class F1DataLoader:
 
             except Exception as e:
                 if "500 calls/h" in str(e):
-                    print("⚠️ Rate limit hit. Waiting 60 seconds...")
+                    print(" Rate limit hit. Waiting 60 seconds...")
                     time.sleep(60)
                 else:
-                    print(f"❌ Error: {e}")
+                    print(f" Error: {e}")
                     break
 
         return None

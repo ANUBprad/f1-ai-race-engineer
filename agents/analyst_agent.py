@@ -1,6 +1,5 @@
 import sys
 import os
-
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -10,20 +9,14 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
+# LLM
+llm = ChatOllama(model="mistral", temperature=0)
 
-# 🔥 LLM
-llm = ChatOllama(
-    model="mistral",
-    temperature=0
-)
-
-
-# 🔥 Prompt
+# Prompt
 prompt = ChatPromptTemplate.from_template("""
 You are a senior Formula 1 race strategist reviewing a decision.
 
-Initial Decision:
-{decision}
+Initial Decision: {decision}
 
 Context:
 - Compound: {compound}
@@ -49,16 +42,12 @@ Return STRICT VALID JSON.
 - No extra text
 - Do not include confidence inside reasoning
 """)
-
-
 parser = JsonOutputParser()
 chain = prompt | llm | parser
 
-
-# 🔥 Function
+# Function
 def analyze_decision(input_data, initial_decision):
     return chain.invoke({
-        **input_data,
-        "decision": initial_decision
+        **input_data, "decision": initial_decision
     })
     
