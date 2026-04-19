@@ -7,49 +7,70 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) 
 
 from langchain_ollama import ChatOllama
 from analysis.sample_data import generate_race_data
+from ml.strategy_engine import StrategyEngine
 
 # LLM SETUP
 llm = ChatOllama(model="mistral", temperature=0.3)
 
 # INSIGHT GENERATION
 def generate_insights(data):
-
-    avg_lap = sum(data["lap_times"]) / len(data["lap_times"])
+    lap_times = data["lap_times"]
+    avg_lap = sum(lap_times) / len(lap_times)
     max_deg = max(data["degradation"])
 
-    # Detect trend
-    if data["lap_times"][-1] > data["lap_times"][0]:
-        trend = "increasing lap times due to tyre degradation"
-    else:
-        trend = "stable performance"
+    # Trend
+    trend = "increasing" if lap_times[-1] > lap_times[0] else "stable"
+
+    # Critical lap detection
+    deltas = [lap_times[i] - lap_times[i-1] for i in range(1, len(lap_times))]
+    critical_lap = deltas.index(max(deltas)) + 2  # +2 because index shift
 
     return {
         "avg_lap_time": round(avg_lap, 2),
         "max_degradation": max_deg,
-        "trend": trend
+        "trend": trend,
+        "critical_lap": critical_lap
     }
 
 
+def generate_strategy_insight(data):
+    engine = StrategyEngine()
+    tyre_age = len(data["lap_times"]) // 2
+    result = engine.decide(
+        compound="MEDIUM",
+        tyre_age=tyre_age,
+        circuit="Bahrain",
+        gap_ahead=5,
+        gap_behind=20
+    )
+    return result
+
+
 # REPORT GENERATION (LLM)
-def generate_report(insights):
+def generate_report(insights, strategy):
 
     prompt = f"""
-        You are a Formula 1 race analyst.
+        You are a professional Formula 1 race analyst.
 
-        Generate a professional race report using:
+        Race Data:
+        - Average Lap Time: {insights['avg_lap_time']}
+        - Max Degradation: {insights['max_degradation']}
+        - Trend: {insights['trend']}
+        - Critical Lap: {insights['critical_lap']}
 
-        Average Lap Time: {insights['avg_lap_time']}
-        Max Tyre Degradation: {insights['max_degradation']}
-        Performance Trend: {insights['trend']}
+        Strategy Decision:
+        - Action: {strategy['action']}
+        - Confidence: {strategy['confidence']}
 
-        Structure your response clearly:
+        Generate a structured report:
+        1. Race Summary
+        2. Key Performance Insight
+        3. Critical Moment Analysis
+        4. Strategy Evaluation
+        5. Final Recommendation
 
-        - Race Summary
-        - Key Insight
-        - Performance Analysis
-
-        Keep it concise (5-6 lines).
-        Use F1-style terminology.
+        Keep it concise but insightful.
+        Use real F1 terminology.
         """
 
     response = llm.invoke(prompt)
@@ -59,17 +80,24 @@ def generate_report(insights):
 # MAIN EXECUTION
 if __name__ == "__main__":
 
-    print("\nGenerating Race Report...\n")
-
-    data = generate_race_data()
-    insights = generate_insights(data)
-
-    print("📊 Insights:")
-    for k, v in insights.items():
-        print(f"- {k}: {v}")
-
-    report = generate_report(insights)
     print("\n" + "="*50)
     print("F1 RACE REPORT")
     print("="*50)
+
+    data = generate_race_data()
+    insights = generate_insights(data)
+    strategy = generate_strategy_insight(data)
+
+    print("\nInsights:")
+    for k, v in insights.items():
+        print(f"- {k}: {v}")
+
+    print("\nStrategy Decision:")
+    print(f"- Action: {strategy['action']}")
+    print(f"- Confidence: {round(strategy['confidence']*100)}%")
+    print(f"- Reasoning: {strategy['reasoning'].replace('.', '. ')}")
+
+    report = generate_report(insights, strategy)
+
+    print("\nRace Report:\n")
     print(report)

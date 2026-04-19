@@ -5,7 +5,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import joblib
 import pandas as pd
 
-
 class StrategyEngine:
     def __init__(self):
         self.tyre_model = joblib.load("ml/models/tyre_model.pkl")
@@ -67,20 +66,12 @@ class StrategyEngine:
             opponent_lap = self.predict_degradation(compound, tyre_age + i)
             gain += (opponent_lap - your_lap)
 
-        print(f"\nUndercut Gain: {gain:.2f}s vs Gap Ahead: {gap_ahead:.2f}s")
-
-        return gain > gap_ahead
+        return gain > gap_ahead, gain
 
     def decide(self, compound, tyre_age, circuit="Default", gap_ahead=5, gap_behind=25):
         stay_loss = self.simulate_stay_out(compound, tyre_age)
         pit_loss = self.simulate_pit(circuit)
-
-        print(f"\nStay Out Loss: {stay_loss:.2f}s")
-        print(f"Pit Loss: {pit_loss:.2f}s")
-        print(f"Gap Ahead: {gap_ahead:.2f}s")
-        print(f"Gap Behind: {gap_behind:.2f}s")
-
-        can_undercut = self.simulate_undercut(compound, tyre_age, gap_ahead)
+        can_undercut, undercut_gain = self.simulate_undercut(compound, tyre_age, gap_ahead)
         will_lose_position = pit_loss > gap_behind
 
         # FINAL DECISION LOGIC
@@ -89,7 +80,7 @@ class StrategyEngine:
         elif pit_loss < stay_loss and not will_lose_position:
             decision = "PIT NOW"
         elif will_lose_position:
-            decision = "DELAY PIT (TRAFFIC RISK)"
+            decision = "DELAY PIT"
         else:
             decision = "STAY OUT"
 
@@ -98,13 +89,18 @@ class StrategyEngine:
             confidence += 0.2
         if will_lose_position:
             confidence -= 0.3
-        confidence = max(0.5, confidence)   # minimum confidence
-        confidence = min(confidence, 0.9)   # cap max
-        confidence = float(confidence)
 
-        return {"decision": decision, "confidence": round(confidence, 2)}
+        confidence = max(0.5, confidence)
+        confidence = min(confidence, 0.9)
 
-# MAIN EXECUTION 
+        return {
+            "action": decision,
+            "confidence": round(float(confidence), 2),
+            "reasoning": f"Stay loss: {stay_loss:.2f}s vs Pit loss: {pit_loss:.2f}s. Undercut gain: {undercut_gain:.2f}s."
+        }
+
+
+# MAIN EXECUTION
 if __name__ == "__main__":
     engine = StrategyEngine()
 
@@ -116,5 +112,7 @@ if __name__ == "__main__":
         gap_behind=25
     )
 
-    print("\n Strategy Decision:", result["decision"])
+    print("\n🏁 Strategy Decision:")
+    print("Action:", result["action"])
     print("Confidence:", result["confidence"])
+    print("Reasoning:", result["reasoning"])
