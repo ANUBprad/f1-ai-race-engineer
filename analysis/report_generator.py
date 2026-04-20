@@ -9,6 +9,7 @@ from langchain_ollama import ChatOllama
 from analysis.sample_data import generate_race_data
 from ml.strategy_engine import StrategyEngine
 from analysis.visualization import generate_all_plots
+from analysis.report_builder import build_html_report
 
 # LLM SETUP
 llm = ChatOllama(model="mistral", temperature=0.3)
@@ -77,7 +78,6 @@ def generate_report(insights, strategy):
     response = llm.invoke(prompt)
     return response.content
 
-
 # MAIN EXECUTION
 if __name__ == "__main__":
 
@@ -103,3 +103,5 @@ if __name__ == "__main__":
 
     print("\nRace Report:\n")
     print(report)
+
+    build_html_report(insights, strategy, report)
