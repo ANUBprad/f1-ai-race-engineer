@@ -52,27 +52,43 @@ def generate_strategy_insight(data):
 def generate_report(insights, strategy):
 
     prompt = f"""
-        You are a professional Formula 1 race analyst.
+        You are an F1 race engineer providing a technical race analysis.
 
-        Race Data:
-        - Average Lap Time: {insights['avg_lap_time']}
-        - Max Degradation: {insights['max_degradation']}
-        - Trend: {insights['trend']}
-        - Critical Lap: {insights['critical_lap']}
+        Rules:
+        - Be concise and precise
+        - No storytelling or hype
+        - No generic phrases
+        - Use bullet points
+        - Each point must be short (max 12–15 words)
 
-        Strategy Decision:
-        - Action: {strategy['action']}
-        - Confidence: {strategy['confidence']}
+        Data:
+        Avg Lap Time: {insights['avg_lap_time']}
+        Max Degradation: {insights['max_degradation']}
+        Trend: {insights['trend']}
+        Critical Lap: {insights['critical_lap']}
 
-        Generate a structured report:
-        1. Race Summary
-        2. Key Performance Insight
-        3. Critical Moment Analysis
-        4. Strategy Evaluation
-        5. Final Recommendation
+        Strategy:
+        Action: {strategy['action']}
+        Confidence: {strategy['confidence']}
 
-        Keep it concise but insightful.
-        Use real F1 terminology.
+        Output format EXACTLY:
+
+        Race Summary:
+        - ...
+        - ...
+
+        Key Insight:
+        - ...
+
+        Critical Moment:
+        - ...
+
+        Strategy Assessment:
+        - Decision: ...
+        - Reason: ...
+
+        Recommendation:
+        - ...
         """
 
     response = llm.invoke(prompt)
