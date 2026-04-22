@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
 import plotly.graph_objects as go
+import plotly.express as px
 
 from src.utils.config import setup_fastf1_cache
 from src.data.data_loader import F1DataLoader
@@ -14,6 +15,7 @@ from ml.strategy_engine import StrategyEngine
 
 # =========================
 # SETUP
+# =========================
 setup_fastf1_cache()
 loader = F1DataLoader()
 
@@ -24,7 +26,8 @@ st.caption("Telemetry • Strategy • Performance Analysis")
 
 
 # =========================
-# SIDEBAR
+# SIDEBAR INPUTS
+# =========================
 st.sidebar.header("Race Inputs")
 
 year = st.sidebar.selectbox("Year", [2021, 2022, 2023, 2024])
@@ -39,111 +42,158 @@ compound = st.sidebar.selectbox("Tyre Compound", ["SOFT", "MEDIUM", "HARD"])
 gap_ahead = st.sidebar.slider("Gap Ahead (s)", 0, 20, 5)
 gap_behind = st.sidebar.slider("Gap Behind (s)", 0, 30, 20)
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("Strategy Engine")
+run_strategy = st.sidebar.button("Run Strategy")
+
 
 # =========================
-# LOAD SESSION
-if st.sidebar.button("Run Analysis"):
+# LOAD SESSION (AUTO)
+# =========================
+with st.spinner("Loading session..."):
+    session = loader.load_session(year, gp, session_type)
 
-    with st.spinner("Loading session..."):
-        session = loader.load_session(year, gp, session_type)
+st.success("Session loaded")
 
-    st.success("Session loaded")
 
-    try:
-        # DRIVER LIST
-        driver_dict = {
-            d: session.get_driver(d)["FullName"]
-            for d in session.drivers
-        }
+# =========================
+# DRIVER SELECTION (DYNAMIC)
+# =========================
+driver_dict = {
+    d: session.get_driver(d)["FullName"]
+    for d in session.drivers
+}
 
-        driver = st.selectbox(
-            "Driver",
-            list(driver_dict.keys()),
-            format_func=lambda x: driver_dict[x]
-        )
+driver = st.selectbox(
+    "Driver",
+    list(driver_dict.keys()),
+    format_func=lambda x: driver_dict[x]
+)
 
-        telemetry = loader.get_driver_telemetry(session, driver, lap_number)
 
-        # =========================
-        # GRAPH + INSIGHTS
-        col_main, col_side = st.columns([3, 1])
+# =========================
+# TELEMETRY
+# =========================
+telemetry = loader.get_driver_telemetry(session, driver, lap_number)
 
-        with col_main:
-            fig = go.Figure()
 
-            fig.add_trace(go.Scatter(
-                x=telemetry["Distance"],
-                y=telemetry["Speed"],
-                mode='lines'
-            ))
+# =========================
+# REAL LAP TIMES
+# =========================
+lap_times = loader.get_lap_times(session, driver)
+lap_times = lap_times[-10:]
 
-            fig.update_layout(
-                title=f"{driver} Lap {lap_number} Speed Trace",
-                template="plotly_dark"
-            )
+if len(lap_times) < 3:
+    st.warning("Not enough lap data for analysis")
+    st.stop()
 
-            st.plotly_chart(fig, use_container_width=True)
 
-        # =========================
-        # DATA PREP
-        speeds = telemetry["Speed"].dropna().tolist()
+# =========================
+# ML DEGRADATION
+# =========================
+engine = StrategyEngine()
 
-        lap_times = [
-            sum(speeds[i:i+5]) / 5
-            for i in range(0, len(speeds)-5, 5)
-        ]
+degradation = [
+    engine.predict_degradation(compound, i)
+    for i in range(len(lap_times))
+]
 
-        degradation = [i * 0.5 for i in range(len(lap_times))]
+data = {
+    "lap_times": lap_times,
+    "degradation": degradation
+}
 
-        data = {
-            "lap_times": lap_times[:10],
-            "degradation": degradation[:10]
-        }
+insights = generate_insights(data)
 
-        insights = generate_insights(data)
+# Report only for performance (no strategy dependency)
+report = generate_report(insights, {"action": "N/A", "confidence": 0})
 
-        engine = StrategyEngine()
-        strategy = engine.decide(
-            compound=compound,
-            tyre_age=lap_number,
-            circuit=gp,
-            gap_ahead=gap_ahead,
-            gap_behind=gap_behind
-        )
-        report = generate_report(insights, strategy)
 
-        # =========================
-        # SIDE PANEL (INSIGHTS)
-        with col_side:
-            st.subheader("Insights")
+# =========================
+# LAYOUT
+# =========================
+col_main, col_side = st.columns([3, 1])
 
-            st.metric("Avg Lap Time", f"{insights['avg_lap_time']} s")
-            st.metric("Trend", insights["trend"])
-            st.metric("Degradation", insights["max_degradation"])
-            st.metric("Critical Lap", insights["critical_lap"])
 
-        # =========================
-        # STRATEGY
-        st.markdown("### Strategy Assessment")
+# =========================
+# TELEMETRY GRAPH
+# =========================
+with col_main:
+    fig = go.Figure()
 
-        if "PIT" in strategy["action"]:
-            st.error(strategy["action"])
-        else:
-            st.success(strategy["action"])
+    fig.add_trace(go.Scatter(
+        x=telemetry["Distance"],
+        y=telemetry["Speed"],
+        mode='lines',
+        name='Speed'
+    ))
 
-        st.progress(strategy["confidence"])
-        st.caption(f"Confidence: {round(strategy['confidence']*100)}%")
+    fig.update_layout(
+        title=f"{driver} Lap {lap_number} Speed Trace",
+        xaxis_title="Distance (m)",
+        yaxis_title="Speed (km/h)",
+        template="plotly_dark"
+    )
 
-        with st.expander("Reasoning"):
-            st.write(strategy["reasoning"])
+    st.plotly_chart(fig, use_container_width=True)
 
-        # =========================
-        # REPORT (CLEAN FORMAT)
-        st.markdown("### Race Analysis")
+    # =========================
+    # LAP TIME TREND
+    # =========================
+    fig2 = px.line(
+        x=list(range(len(lap_times))),
+        y=lap_times,
+        labels={"x": "Lap", "y": "Lap Time (s)"},
+        title="Lap Time Trend"
+    )
 
-        sections = report.split("\n\n")
-        for section in sections:
-            st.markdown(section)
+    st.plotly_chart(fig2, use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Error: {e}")
+
+# =========================
+# INSIGHTS PANEL
+# =========================
+with col_side:
+    st.subheader("Insights")
+
+    st.metric("Avg Lap Time", f"{insights['avg_lap_time']} s")
+    st.metric("Trend", insights["trend"])
+    st.metric("Degradation", insights["max_degradation"])
+    st.metric("Critical Lap", insights["critical_lap"])
+
+
+# =========================
+# STRATEGY (SEPARATE)
+# =========================
+if run_strategy:
+
+    strategy = engine.decide(
+        compound=compound,
+        tyre_age=len(lap_times),
+        circuit=gp,
+        gap_ahead=gap_ahead,
+        gap_behind=gap_behind
+    )
+
+    st.markdown("### Strategy Assessment")
+
+    if "PIT" in strategy["action"]:
+        st.error(strategy["action"])
+    else:
+        st.success(strategy["action"])
+
+    st.progress(strategy["confidence"])
+    st.caption(f"Confidence: {round(strategy['confidence']*100)}%")
+
+    with st.expander("Reasoning"):
+        st.write(strategy["reasoning"])
+
+
+# =========================
+# REPORT
+# =========================
+st.markdown("### Race Analysis")
+
+sections = report.split("\n\n")
+for section in sections:
+    st.markdown(section)

@@ -97,3 +97,10 @@ class F1DataLoader:
         except Exception as e:
             logging.error(f"Telemetry fetch error: {e}")
             raise
+
+    def get_lap_times(self, session, driver):
+        laps = session.laps.pick_drivers(driver)
+        laps = laps.dropna(subset=["LapTime"]) # Remove invalid laps
+
+        lap_times = laps["LapTime"].dt.total_seconds().tolist()
+        return lap_times

@@ -72,26 +72,32 @@ class StrategyEngine:
         stay_loss = self.simulate_stay_out(compound, tyre_age)
         pit_loss = self.simulate_pit(circuit)
         can_undercut, undercut_gain = self.simulate_undercut(compound, tyre_age, gap_ahead)
-        will_lose_position = pit_loss > gap_behind
+        will_lose_position = pit_loss > (gap_behind + 3)
 
         # FINAL DECISION LOGIC
-        if can_undercut and not will_lose_position:
+        if can_undercut:
             decision = "PIT NOW (UNDERCUT)"
-        elif pit_loss < stay_loss and not will_lose_position:
+
+        elif pit_loss + 2 < stay_loss:
             decision = "PIT NOW"
+
         elif will_lose_position:
             decision = "DELAY PIT"
+
         else:
             decision = "STAY OUT"
 
-        confidence = abs(stay_loss - pit_loss) / (stay_loss + pit_loss)
+        confidence = abs(stay_loss - pit_loss) / max(stay_loss, pit_loss)
+
         if can_undercut:
             confidence += 0.2
-        if will_lose_position:
-            confidence -= 0.3
 
-        confidence = max(0.5, confidence)
-        confidence = min(confidence, 0.9)
+        if will_lose_position:
+            confidence -= 0.2
+
+        confidence = max(0.2, confidence)
+        confidence = min(confidence, 0.95)
+        confidence = round(confidence, 2)
 
         return {
             "action": decision,
