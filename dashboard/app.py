@@ -57,7 +57,7 @@ st.success("Session loaded")
 
 
 # =========================
-# DRIVER SELECTION (DYNAMIC)
+# DRIVER SELECTION
 # =========================
 driver_dict = {
     d: session.get_driver(d)["FullName"]
@@ -69,6 +69,17 @@ driver = st.selectbox(
     list(driver_dict.keys()),
     format_func=lambda x: driver_dict[x]
 )
+
+
+# =========================
+# SESSION CONTEXT
+# =========================
+st.markdown("### Session Context")
+
+c1, c2, c3 = st.columns(3)
+c1.metric("Driver", driver_dict[driver])
+c2.metric("Grand Prix", gp)
+c3.metric("Lap", lap_number)
 
 
 # =========================
@@ -105,9 +116,6 @@ data = {
 
 insights = generate_insights(data)
 
-# Report only for performance (no strategy dependency)
-report = generate_report(insights, {"action": "N/A", "confidence": 0})
-
 
 # =========================
 # LAYOUT
@@ -130,16 +138,12 @@ with col_main:
 
     fig.update_layout(
         title=f"{driver} Lap {lap_number} Speed Trace",
-        xaxis_title="Distance (m)",
-        yaxis_title="Speed (km/h)",
         template="plotly_dark"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # =========================
     # LAP TIME TREND
-    # =========================
     fig2 = px.line(
         x=list(range(len(lap_times))),
         y=lap_times,
@@ -148,6 +152,16 @@ with col_main:
     )
 
     st.plotly_chart(fig2, use_container_width=True)
+
+    # DEGRADATION GRAPH
+    fig3 = px.line(
+        x=list(range(len(degradation))),
+        y=degradation,
+        labels={"x": "Lap", "y": "Degradation"},
+        title="Tyre Degradation Trend"
+    )
+
+    st.plotly_chart(fig3, use_container_width=True)
 
 
 # =========================
@@ -160,6 +174,13 @@ with col_side:
     st.metric("Trend", insights["trend"])
     st.metric("Degradation", insights["max_degradation"])
     st.metric("Critical Lap", insights["critical_lap"])
+
+    # Optional position
+    try:
+        position = session.laps.pick_drivers(driver)["Position"].iloc[-1]
+        st.metric("Position", int(position))
+    except:
+        pass
 
 
 # =========================
@@ -175,6 +196,16 @@ if run_strategy:
         gap_behind=gap_behind
     )
 
+    # STRATEGY COMPARISON
+    stay_loss = engine.simulate_stay_out(compound, len(lap_times))
+    pit_loss = engine.simulate_pit(gp)
+
+    st.markdown("### Strategy Comparison")
+
+    c1, c2 = st.columns(2)
+    c1.metric("Stay Out Loss", f"{round(stay_loss, 2)} s")
+    c2.metric("Pit Loss", f"{round(pit_loss, 2)} s")
+
     st.markdown("### Strategy Assessment")
 
     if "PIT" in strategy["action"]:
@@ -187,6 +218,13 @@ if run_strategy:
 
     with st.expander("Reasoning"):
         st.write(strategy["reasoning"])
+
+    # REPORT WITH STRATEGY
+    report = generate_report(insights, strategy)
+
+else:
+    # REPORT WITHOUT STRATEGY
+    report = generate_report(insights, {"action": "HOLD", "confidence": 0})
 
 
 # =========================
