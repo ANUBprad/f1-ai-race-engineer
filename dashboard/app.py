@@ -148,7 +148,7 @@ with col_main:
         x=list(range(len(lap_times))),
         y=lap_times,
         labels={"x": "Lap", "y": "Lap Time (s)"},
-        title="Lap Time Trend"
+        title="Lap Time Evolution (Last 10 Laps)"
     )
 
     st.plotly_chart(fig2, use_container_width=True)
@@ -158,7 +158,7 @@ with col_main:
         x=list(range(len(degradation))),
         y=degradation,
         labels={"x": "Lap", "y": "Degradation"},
-        title="Tyre Degradation Trend"
+        title="Tyre Degradation Curve"
     )
 
     st.plotly_chart(fig3, use_container_width=True)
@@ -168,14 +168,19 @@ with col_main:
 # INSIGHTS PANEL
 # =========================
 with col_side:
-    st.subheader("Insights")
+    st.subheader("Performance Insights")
 
-    st.metric("Avg Lap Time", f"{insights['avg_lap_time']} s")
-    st.metric("Trend", insights["trend"])
-    st.metric("Degradation", insights["max_degradation"])
+    st.metric("Avg Lap Time", f"{round(insights['avg_lap_time'],2)} s")
+
+    trend_map = {
+        "increasing": "Performance dropping",
+        "stable": "Consistent pace"
+    }
+    st.metric("Trend", trend_map.get(insights["trend"], insights["trend"]))
+
+    st.metric("Degradation", round(insights["max_degradation"],2))
     st.metric("Critical Lap", insights["critical_lap"])
 
-    # Optional position
     try:
         position = session.laps.pick_drivers(driver)["Position"].iloc[-1]
         st.metric("Position", int(position))
@@ -206,6 +211,8 @@ if run_strategy:
     c1.metric("Stay Out Loss", f"{round(stay_loss, 2)} s")
     c2.metric("Pit Loss", f"{round(pit_loss, 2)} s")
 
+    st.caption("Decision based on degradation vs pit loss comparison")
+
     st.markdown("### Strategy Assessment")
 
     if "PIT" in strategy["action"]:
@@ -219,19 +226,54 @@ if run_strategy:
     with st.expander("Reasoning"):
         st.write(strategy["reasoning"])
 
+    # =========================
+    # 🔥 NEW: STRATEGY SIMULATION
+    # =========================
+    st.markdown("### Strategy Simulation")
+
+    sim = engine.simulate_strategy_options(
+        compound=compound,
+        tyre_age=len(lap_times),
+        circuit=gp,
+        gap_ahead=gap_ahead
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Stay Out Loss", f"{sim['stay_out_loss']} s")
+    col2.metric("Pit Loss", f"{sim['pit_loss']} s")
+    col3.metric("Undercut Gain", f"{sim['undercut_gain']} s")
+
+    fig_sim = px.bar(
+        x=["Stay Out", "Pit", "Undercut"],
+        y=[
+            sim["stay_out_loss"],
+            sim["pit_loss"],
+            sim["undercut_gain"]
+        ],
+        title="Strategy Outcome Comparison"
+    )
+
+    st.plotly_chart(fig_sim, use_container_width=True)
+
     # REPORT WITH STRATEGY
     report = generate_report(insights, strategy)
 
 else:
-    # REPORT WITHOUT STRATEGY
     report = generate_report(insights, {"action": "HOLD", "confidence": 0})
 
 
 # =========================
 # REPORT
 # =========================
-st.markdown("### Race Analysis")
+st.markdown("### Race Summary")
 
 sections = report.split("\n\n")
 for section in sections:
     st.markdown(section)
+
+
+# =========================
+# FOOTNOTE
+# =========================
+st.caption("Note: Analysis based on recent laps and ML-based degradation model")

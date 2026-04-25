@@ -67,6 +67,24 @@ class StrategyEngine:
             gain += (opponent_lap - your_lap)
 
         return gain > gap_ahead, gain
+    
+    def simulate_strategy_options(self, compound, tyre_age, circuit, gap_ahead):
+
+        stay_loss = self.simulate_stay_out(compound, tyre_age)
+        pit_loss = self.simulate_pit(circuit)
+
+        undercut_gain = 0
+        for i in range(2):
+            your_lap = self.predict_degradation("MEDIUM", i)
+            opponent_lap = self.predict_degradation(compound, tyre_age + i)
+            undercut_gain += (opponent_lap - your_lap)
+
+        return {
+            "stay_out_loss": round(stay_loss, 2),
+            "pit_loss": round(pit_loss, 2),
+            "undercut_gain": round(undercut_gain, 2),
+            "gap_ahead": gap_ahead
+        }
 
     def decide(self, compound, tyre_age, circuit="Default", gap_ahead=5, gap_behind=25):
         stay_loss = self.simulate_stay_out(compound, tyre_age)
