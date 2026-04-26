@@ -48,7 +48,7 @@ run_strategy = st.sidebar.button("Run Strategy")
 
 
 # =========================
-# LOAD SESSION (AUTO)
+# LOAD SESSION
 # =========================
 with st.spinner("Loading session..."):
     session = loader.load_session(year, gp, session_type)
@@ -57,18 +57,26 @@ st.success("Session loaded")
 
 
 # =========================
-# DRIVER SELECTION
+# DRIVER SELECTION (MULTI)
 # =========================
 driver_dict = {
     d: session.get_driver(d)["FullName"]
     for d in session.drivers
 }
 
-driver = st.selectbox(
-    "Driver",
+drivers_selected = st.multiselect(
+    "Select Drivers (Max 2)",
     list(driver_dict.keys()),
-    format_func=lambda x: driver_dict[x]
+    default=[list(driver_dict.keys())[0]]
 )
+
+if len(drivers_selected) == 0:
+    st.warning("Select at least one driver")
+    st.stop()
+
+if len(drivers_selected) > 2:
+    st.warning("Select maximum 2 drivers")
+    st.stop()
 
 
 # =========================
@@ -77,203 +85,180 @@ driver = st.selectbox(
 st.markdown("### Session Context")
 
 c1, c2, c3 = st.columns(3)
-c1.metric("Driver", driver_dict[driver])
-c2.metric("Grand Prix", gp)
+c1.metric("Grand Prix", gp)
+c2.metric("Session", session_type)
 c3.metric("Lap", lap_number)
 
 
-# =========================
-# TELEMETRY
-# =========================
-telemetry = loader.get_driver_telemetry(session, driver, lap_number)
-
-
-# =========================
-# REAL LAP TIMES
-# =========================
-lap_times = loader.get_lap_times(session, driver)
-lap_times = lap_times[-10:]
-
-if len(lap_times) < 3:
-    st.warning("Not enough lap data for analysis")
-    st.stop()
-
-
-# =========================
-# ML DEGRADATION
-# =========================
 engine = StrategyEngine()
 
-degradation = [
-    engine.predict_degradation(compound, i)
-    for i in range(len(lap_times))
-]
-
-data = {
-    "lap_times": lap_times,
-    "degradation": degradation
-}
-
-insights = generate_insights(data)
-
 
 # =========================
-# LAYOUT
+# SINGLE DRIVER MODE
 # =========================
-col_main, col_side = st.columns([3, 1])
+if len(drivers_selected) == 1:
 
+    driver = drivers_selected[0]
 
-# =========================
-# TELEMETRY GRAPH
-# =========================
-with col_main:
-    fig = go.Figure()
+    st.subheader(f"{driver_dict[driver]} — Performance Overview")
 
-    fig.add_trace(go.Scatter(
-        x=telemetry["Distance"],
-        y=telemetry["Speed"],
-        mode='lines',
-        name='Speed'
-    ))
+    telemetry = loader.get_driver_telemetry(session, driver, lap_number)
 
-    fig.update_layout(
-        title=f"{driver} Lap {lap_number} Speed Trace",
-        template="plotly_dark"
-    )
+    lap_times = loader.get_lap_times(session, driver)[-10:]
 
-    st.plotly_chart(fig, use_container_width=True)
+    if len(lap_times) < 3:
+        st.warning("Not enough lap data")
+        st.stop()
 
-    # LAP TIME TREND
-    fig2 = px.line(
-        x=list(range(len(lap_times))),
-        y=lap_times,
-        labels={"x": "Lap", "y": "Lap Time (s)"},
-        title="Lap Time Evolution (Last 10 Laps)"
-    )
+    degradation = [
+        engine.predict_degradation(compound, i)
+        for i in range(len(lap_times))
+    ]
 
-    st.plotly_chart(fig2, use_container_width=True)
-
-    # DEGRADATION GRAPH
-    fig3 = px.line(
-        x=list(range(len(degradation))),
-        y=degradation,
-        labels={"x": "Lap", "y": "Degradation"},
-        title="Tyre Degradation Curve"
-    )
-
-    st.plotly_chart(fig3, use_container_width=True)
-
-
-# =========================
-# INSIGHTS PANEL
-# =========================
-with col_side:
-    st.subheader("Performance Insights")
-
-    st.metric("Avg Lap Time", f"{round(insights['avg_lap_time'],2)} s")
-
-    trend_map = {
-        "increasing": "Performance dropping",
-        "stable": "Consistent pace"
+    data = {
+        "lap_times": lap_times,
+        "degradation": degradation
     }
-    st.metric("Trend", trend_map.get(insights["trend"], insights["trend"]))
 
-    st.metric("Degradation", round(insights["max_degradation"],2))
-    st.metric("Critical Lap", insights["critical_lap"])
+    insights = generate_insights(data)
 
-    try:
-        position = session.laps.pick_drivers(driver)["Position"].iloc[-1]
-        st.metric("Position", int(position))
-    except:
-        pass
+    col_main, col_side = st.columns([3, 1])
+
+    # =========================
+    # GRAPH
+    # =========================
+    with col_main:
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=telemetry["Distance"],
+            y=telemetry["Speed"],
+            mode='lines'
+        ))
+
+        fig.update_layout(template="plotly_dark")
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Lap trend
+        fig2 = px.line(
+            x=list(range(len(lap_times))),
+            y=lap_times,
+            title="Lap Time Evolution"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # Degradation
+        fig3 = px.line(
+            x=list(range(len(degradation))),
+            y=degradation,
+            title="Tyre Degradation Curve"
+        )
+        st.plotly_chart(fig3, use_container_width=True)
+
+    # =========================
+    # INSIGHTS
+    # =========================
+    with col_side:
+        st.subheader("Performance Insights")
+
+        st.metric("Avg Lap", f"{round(insights['avg_lap_time'],2)} s")
+        st.metric("Trend", insights["trend"])
+        st.metric("Degradation", round(insights["max_degradation"],2))
+        st.metric("Critical Lap", insights["critical_lap"])
+
+    # =========================
+    # STRATEGY
+    # =========================
+    if run_strategy:
+
+        strategy = engine.decide(
+            compound=compound,
+            tyre_age=len(lap_times),
+            circuit=gp,
+            gap_ahead=gap_ahead,
+            gap_behind=gap_behind
+        )
+
+        st.markdown("### Strategy Assessment")
+
+        if "PIT" in strategy["action"]:
+            st.error(strategy["action"])
+        else:
+            st.success(strategy["action"])
+
+        st.progress(strategy["confidence"])
+
+        # Simulation
+        st.markdown("### Strategy Simulation")
+
+        sim = engine.simulate_strategy_options(
+            compound=compound,
+            tyre_age=len(lap_times),
+            circuit=gp,
+            gap_ahead=gap_ahead
+        )
+
+        st.write(sim)
+
+        # What-if
+        st.markdown("### What-If")
+
+        if st.button("Simulate Pit Now"):
+
+            stay = engine.simulate_stay_out(compound, len(lap_times))
+            pit = engine.simulate_pit(gp)
+
+            delta = stay - pit
+
+            if delta > 0:
+                st.success(f"Pit now gains ~{round(delta,2)}s")
+            else:
+                st.warning(f"Pit now loses ~{round(abs(delta),2)}s")
+
+        report = generate_report(insights, strategy)
+
+    else:
+        report = generate_report(insights, {"action": "HOLD", "confidence": 0})
+
+    # REPORT
+    st.markdown("### Race Summary")
+    st.markdown(report)
 
 
 # =========================
-# STRATEGY (SEPARATE)
+# MULTI DRIVER MODE
 # =========================
-if run_strategy:
+else:
 
-    strategy = engine.decide(
-        compound=compound,
-        tyre_age=len(lap_times),
-        circuit=gp,
-        gap_ahead=gap_ahead,
-        gap_behind=gap_behind
+    d1, d2 = drivers_selected
+
+    st.subheader("Driver Comparison")
+
+    laps1 = loader.get_lap_times(session, d1)[-10:]
+    laps2 = loader.get_lap_times(session, d2)[-10:]
+
+    fig_compare = px.line(
+        x=list(range(len(laps1))),
+        y=[laps1, laps2],
+        title="Pace Comparison"
     )
 
-    # STRATEGY COMPARISON
-    stay_loss = engine.simulate_stay_out(compound, len(lap_times))
-    pit_loss = engine.simulate_pit(gp)
+    st.plotly_chart(fig_compare, use_container_width=True)
 
-    st.markdown("### Strategy Comparison")
+    avg1 = round(sum(laps1)/len(laps1), 2)
+    avg2 = round(sum(laps2)/len(laps2), 2)
 
     c1, c2 = st.columns(2)
-    c1.metric("Stay Out Loss", f"{round(stay_loss, 2)} s")
-    c2.metric("Pit Loss", f"{round(pit_loss, 2)} s")
 
-    st.caption("Decision based on degradation vs pit loss comparison")
+    c1.metric(driver_dict[d1], f"{avg1} s")
+    c2.metric(driver_dict[d2], f"{avg2} s")
 
-    st.markdown("### Strategy Assessment")
-
-    if "PIT" in strategy["action"]:
-        st.error(strategy["action"])
-    else:
-        st.success(strategy["action"])
-
-    st.progress(strategy["confidence"])
-    st.caption(f"Confidence: {round(strategy['confidence']*100)}%")
-
-    with st.expander("Reasoning"):
-        st.write(strategy["reasoning"])
-
-    # =========================
-    # 🔥 NEW: STRATEGY SIMULATION
-    # =========================
-    st.markdown("### Strategy Simulation")
-
-    sim = engine.simulate_strategy_options(
-        compound=compound,
-        tyre_age=len(lap_times),
-        circuit=gp,
-        gap_ahead=gap_ahead
-    )
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric("Stay Out Loss", f"{sim['stay_out_loss']} s")
-    col2.metric("Pit Loss", f"{sim['pit_loss']} s")
-    col3.metric("Undercut Gain", f"{sim['undercut_gain']} s")
-
-    fig_sim = px.bar(
-        x=["Stay Out", "Pit", "Undercut"],
-        y=[
-            sim["stay_out_loss"],
-            sim["pit_loss"],
-            sim["undercut_gain"]
-        ],
-        title="Strategy Outcome Comparison"
-    )
-
-    st.plotly_chart(fig_sim, use_container_width=True)
-
-    # REPORT WITH STRATEGY
-    report = generate_report(insights, strategy)
-
-else:
-    report = generate_report(insights, {"action": "HOLD", "confidence": 0})
-
-
-# =========================
-# REPORT
-# =========================
-st.markdown("### Race Summary")
-
-sections = report.split("\n\n")
-for section in sections:
-    st.markdown(section)
+    faster = d1 if avg1 < avg2 else d2
+    st.success(f"{driver_dict[faster]} has better pace")
 
 
 # =========================
 # FOOTNOTE
 # =========================
-st.caption("Note: Analysis based on recent laps and ML-based degradation model")
+st.caption("Analysis based on telemetry and ML-driven degradation model")
