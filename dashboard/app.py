@@ -15,7 +15,6 @@ from ml.strategy_engine import StrategyEngine
 
 # =========================
 # SETUP
-# =========================
 setup_fastf1_cache()
 loader = F1DataLoader()
 
@@ -27,7 +26,6 @@ st.caption("Telemetry • Strategy • Performance Analysis")
 
 # =========================
 # SIDEBAR INPUTS
-# =========================
 st.sidebar.header("Race Inputs")
 
 year = st.sidebar.selectbox("Year", [2021, 2022, 2023, 2024])
@@ -49,7 +47,6 @@ run_strategy = st.sidebar.button("Run Strategy")
 
 # =========================
 # LOAD SESSION
-# =========================
 with st.spinner("Loading session..."):
     session = loader.load_session(year, gp, session_type)
 
@@ -58,7 +55,6 @@ st.success("Session loaded")
 
 # =========================
 # DRIVER SELECTION (MULTI)
-# =========================
 driver_dict = {
     d: session.get_driver(d)["FullName"]
     for d in session.drivers
@@ -81,7 +77,6 @@ if len(drivers_selected) > 2:
 
 # =========================
 # SESSION CONTEXT
-# =========================
 st.markdown("### Session Context")
 
 c1, c2, c3 = st.columns(3)
@@ -89,21 +84,16 @@ c1.metric("Grand Prix", gp)
 c2.metric("Session", session_type)
 c3.metric("Lap", lap_number)
 
-
 engine = StrategyEngine()
 
 
 # =========================
 # SINGLE DRIVER MODE
-# =========================
 if len(drivers_selected) == 1:
 
     driver = drivers_selected[0]
-
     st.subheader(f"{driver_dict[driver]} — Performance Overview")
-
     telemetry = loader.get_driver_telemetry(session, driver, lap_number)
-
     lap_times = loader.get_lap_times(session, driver)[-10:]
 
     if len(lap_times) < 3:
@@ -115,18 +105,12 @@ if len(drivers_selected) == 1:
         for i in range(len(lap_times))
     ]
 
-    data = {
-        "lap_times": lap_times,
-        "degradation": degradation
-    }
-
+    data = {"lap_times": lap_times, "degradation": degradation}
     insights = generate_insights(data)
-
     col_main, col_side = st.columns([3, 1])
 
     # =========================
     # GRAPH
-    # =========================
     with col_main:
         fig = go.Figure()
 
@@ -137,7 +121,6 @@ if len(drivers_selected) == 1:
         ))
 
         fig.update_layout(template="plotly_dark")
-
         st.plotly_chart(fig, use_container_width=True)
 
         # Lap trend
@@ -158,7 +141,6 @@ if len(drivers_selected) == 1:
 
     # =========================
     # INSIGHTS
-    # =========================
     with col_side:
         st.subheader("Performance Insights")
 
@@ -169,7 +151,6 @@ if len(drivers_selected) == 1:
 
     # =========================
     # STRATEGY
-    # =========================
     if run_strategy:
 
         strategy = engine.decide(
@@ -179,7 +160,6 @@ if len(drivers_selected) == 1:
             gap_ahead=gap_ahead,
             gap_behind=gap_behind
         )
-
         st.markdown("### Strategy Assessment")
 
         if "PIT" in strategy["action"]:
@@ -198,7 +178,6 @@ if len(drivers_selected) == 1:
             circuit=gp,
             gap_ahead=gap_ahead
         )
-
         st.write(sim)
 
         # What-if
@@ -208,7 +187,6 @@ if len(drivers_selected) == 1:
 
             stay = engine.simulate_stay_out(compound, len(lap_times))
             pit = engine.simulate_pit(gp)
-
             delta = stay - pit
 
             if delta > 0:
@@ -228,11 +206,8 @@ if len(drivers_selected) == 1:
 
 # =========================
 # MULTI DRIVER MODE
-# =========================
 else:
-
     d1, d2 = drivers_selected
-
     st.subheader("Driver Comparison")
 
     laps1 = loader.get_lap_times(session, d1)[-10:]
@@ -260,5 +235,4 @@ else:
 
 # =========================
 # FOOTNOTE
-# =========================
 st.caption("Analysis based on telemetry and ML-driven degradation model")

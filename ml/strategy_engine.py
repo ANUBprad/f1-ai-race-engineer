@@ -6,8 +6,14 @@ import joblib
 import pandas as pd
 
 class StrategyEngine:
+
     def __init__(self):
-        self.tyre_model = joblib.load("ml/models/tyre_model.pkl")
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(BASE_DIR, "ml", "models", "tyre_model.pkl")
+
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model not found at: {model_path}")
+        self.tyre_model = joblib.load(model_path)
 
     def predict_degradation(self, compound, tyre_age, lap_number=10, track_temp=35, air_temp=25):
         compound_map = {

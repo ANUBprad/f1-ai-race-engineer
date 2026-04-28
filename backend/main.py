@@ -1,10 +1,9 @@
 from fastapi import FastAPI
-from schemas import StrategyInput
-from services import run_strategy
+from backend.schemas import StrategyInput
+from backend.services import run_strategy
 
 app = FastAPI(
     title="F1 AI Race Engineer API",
-    description="Backend for F1 Strategy Simulation",
     version="1.0"
 )
 
@@ -21,5 +20,4 @@ def health():
 
 @app.post("/strategy")
 def get_strategy(data: StrategyInput):
-    result = run_strategy(data)
-    return result
+    return run_strategy(data)
