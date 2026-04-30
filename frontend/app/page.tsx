@@ -1,148 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { getStrategy, simulate } from "@/lib/api";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function Home() {
-  const [result, setResult] = useState<any>(null);
-  const [sim, setSim] = useState<any>(null);
+  const router = useRouter();
+  const nextSectionRef = useRef<HTMLDivElement>(null);
 
-  const [compound, setCompound] = useState("MEDIUM");
-  const [tyreAge, setTyreAge] = useState(10);
-  const [gapAhead, setGapAhead] = useState(5);
-  const [gapBehind, setGapBehind] = useState(20);
+  // Auto-scroll after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      nextSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }, 5000);
 
-  const payload = {
-    compound,
-    tyre_age: tyreAge,
-    circuit: "Bahrain",
-    gap_ahead: gapAhead,
-    gap_behind: gapBehind,
-  };
-
-  const runStrategy = async () => {
-    const data = await getStrategy(payload);
-    setResult(data);
-  };
-
-  const runSimulation = async () => {
-    const data = await simulate(payload);
-    setSim(data);
-  };
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <main className="min-h-screen bg-black text-white flex">
+    <main className="bg-[#050505] text-white overflow-x-hidden">
 
-      {/* LEFT PANEL */}
-      <div className="w-1/3 p-6 border-r border-gray-800">
-        <h2 className="text-xl font-bold mb-4">Race Inputs</h2>
+      {/* HERO SECTION */}
+      <section className="h-screen flex flex-col justify-center items-center text-center relative">
 
-        <label>Tyre Compound</label>
-        <select
-          className="w-full p-2 mb-4 bg-zinc-800"
-          onChange={(e) => setCompound(e.target.value)}
+        {/* Title */}
+        <motion.h1
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+          className="text-6xl font-bold mb-6 tracking-wide"
         >
-          <option>SOFT</option>
-          <option>MEDIUM</option>
-          <option>HARD</option>
-        </select>
-
-        <label>Tyre Age: {tyreAge}</label>
-        <input
-          type="range"
-          min="1"
-          max="30"
-          value={tyreAge}
-          onChange={(e) => setTyreAge(Number(e.target.value))}
-          className="w-full mb-4"
-        />
-
-        <label>Gap Ahead: {gapAhead}s</label>
-        <input
-          type="range"
-          min="0"
-          max="20"
-          value={gapAhead}
-          onChange={(e) => setGapAhead(Number(e.target.value))}
-          className="w-full mb-4"
-        />
-
-        <label>Gap Behind: {gapBehind}s</label>
-        <input
-          type="range"
-          min="0"
-          max="30"
-          value={gapBehind}
-          onChange={(e) => setGapBehind(Number(e.target.value))}
-          className="w-full"
-        />
-      </div>
-
-      {/* RIGHT PANEL */}
-      <div className="w-2/3 p-6">
-
-        <h1 className="text-3xl font-bold mb-6">
           🏁 F1 AI Race Engineer
-        </h1>
+        </motion.h1>
 
-        {/* Buttons */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={runStrategy}
-            className="bg-red-600 px-4 py-2 rounded"
-          >
-            Run Strategy
-          </button>
+        {/* Subtitle */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-gray-400 text-lg"
+        >
+          Precision • Strategy • Telemetry Intelligence
+        </motion.p>
 
-          <button
-            onClick={runSimulation}
-            className="bg-gray-700 px-4 py-2 rounded"
-          >
-            Simulate
-          </button>
+        {/* Scanning text */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          className="mt-10 text-sm text-gray-500"
+        >
+          Initializing race systems...
+        </motion.div>
+
+        {/* Scroll indicator (optional but included) */}
+        <div className="absolute bottom-10 text-gray-500 animate-bounce">
+          ↓
         </div>
 
-        {/* Strategy Result */}
-        {result && (
-          <div className="bg-zinc-900 p-6 rounded mb-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Strategy Decision
-            </h2>
+      </section>
 
-            <p className="text-lg">
-              Action:{" "}
-              <span className="text-green-400">
-                {result.action}
-              </span>
-            </p>
+      {/* MAIN SECTION */}
+      <section
+        ref={nextSectionRef}
+        className="min-h-screen flex flex-col items-center justify-center px-6"
+      >
 
-            <p>
-              Confidence: {Math.round(result.confidence * 100)}%
-            </p>
+        <motion.h2
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-4xl font-bold mb-10"
+        >
+          Enter the Control System
+        </motion.h2>
 
-            <p className="text-gray-400 mt-2">
-              {result.reasoning}
-            </p>
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="flex flex-col sm:flex-row gap-6"
+        >
 
-        {/* Simulation Result */}
-        {sim && (
-          <div className="bg-zinc-900 p-6 rounded">
-            <h2 className="text-xl font-semibold mb-2">
-              Simulation
-            </h2>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="bg-red-600 px-8 py-4 text-lg tracking-wide hover:bg-red-500 transition"
+          >
+            Dashboard
+          </button>
 
-            <p>Stay Out Loss: {sim.stay_out_loss}s</p>
-            <p>Pit Loss: {sim.pit_loss}s</p>
-            <p>
-              Undercut:{" "}
-              {sim.undercut_possible ? "YES" : "NO"}
-            </p>
-          </div>
-        )}
+          <button
+            onClick={() => router.push("/strategy")}
+            className="border border-gray-600 px-8 py-4 text-lg hover:border-red-500 transition"
+          >
+            Strategy Lab
+          </button>
 
-      </div>
+          <button
+            onClick={() => router.push("/chat")}
+            className="bg-zinc-800 px-8 py-4 text-lg hover:bg-zinc-700 transition"
+          >
+            AI Engineer
+          </button>
+
+        </motion.div>
+
+      </section>
+
     </main>
   );
 }
